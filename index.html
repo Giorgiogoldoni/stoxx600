@@ -366,6 +366,63 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
   border-radius: 4px; padding: 10px; font-size: 10px; color: var(--text2); line-height: 1.6;
 }
 
+
+/* PORTFOLIO MODAL */
+#portfolio-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 150;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 20px; overflow-y: auto;
+}
+#portfolio-overlay.open { display: flex; }
+#portfolio-modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  width: 100%; max-width: 1000px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+.pf-header {
+  display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+.pf-title { font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; color:var(--accent); letter-spacing:3px; }
+.pf-controls { display: flex; gap: 10px; align-items: center; margin-left: auto; }
+.pf-body { padding: 16px 20px; max-height: calc(90vh - 140px); overflow-y: auto; }
+.pf-stats-row {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px;
+}
+.pf-stat {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px; text-align: center;
+}
+.pf-stat .ps-val { font-size: 20px; font-weight: 700; font-family:'Rajdhani',sans-serif; }
+.pf-stat .ps-lbl { font-size: 9px; color: var(--text2); letter-spacing: 1px; margin-top: 2px; }
+.pf-section-title {
+  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:13px;
+  letter-spacing:1.5px; color:var(--accent); text-transform:uppercase;
+  margin: 14px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+.pf-table { width:100%; border-collapse:collapse; font-size:11px; margin-bottom:14px; }
+.pf-table th {
+  background:var(--surface2); padding:7px 8px; text-align:left;
+  font-family:'Rajdhani',sans-serif; font-size:10px; letter-spacing:1px;
+  color:var(--text2); text-transform:uppercase; border-bottom:1px solid var(--border);
+}
+.pf-table td { padding:7px 8px; border-bottom:1px solid rgba(0,0,0,0.05); }
+.pf-table tr:hover td { background:var(--surface2); }
+.pf-weight-bar { height:6px; background:var(--surface3); border-radius:3px; overflow:hidden; margin-top:3px; }
+.pf-weight-fill { height:100%; border-radius:3px; background:var(--blue); }
+.pf-sector-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; margin-bottom:14px; }
+.pf-sector-card {
+  background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:10px;
+}
+.pf-sector-name { font-size:10px; color:var(--text2); margin-bottom:4px; }
+.pf-sector-count { font-size:16px; font-weight:700; font-family:'Rajdhani',sans-serif; }
+.pf-sector-bar { height:3px; background:var(--surface3); border-radius:2px; overflow:hidden; margin-top:4px; }
+.pf-sector-fill { height:100%; border-radius:2px; }
+.pf-disclaimer {
+  background:rgba(176,130,10,0.06); border:1px solid rgba(176,130,10,0.2);
+  border-radius:6px; padding:10px; font-size:10px; color:var(--text3); line-height:1.6; margin-top:12px;
+}
+
 </style>
 </head>
 <body>
@@ -387,6 +444,7 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
     <button class="topbar-btn" id="scan-btn" onclick="startScan()">▶ SCANSIONA TUTTI</button>
     <button class="topbar-btn" id="notify-btn" onclick="requestNotifications()" title="Abilita notifiche cambio segnale">🔕 Notifiche</button>
     <button class="topbar-btn" onclick="clearStorage()" title="Svuota cache dati" style="font-size:10px;">🗑 Cache</button>
+    <button class="topbar-btn" onclick="showPortfolio()" title="Suggerisci portafoglio" style="background:rgba(26,158,99,0.08);border-color:rgba(26,158,99,0.3);color:var(--bull);">💼 PORTAFOGLIO</button>
     <button class="topbar-btn" onclick="showInfo()" title="Come funziona RAPTOR">ℹ️ INFO</button>
   </header>
 
@@ -1857,6 +1915,7 @@ async function startScan() {
       state.scanning=false; updateScanBtn();
       document.getElementById('scan-progress').style.display='none';
       updateLastUpdate();
+      saveToStorage();
       return;
     }
     const batch = scanQueue.splice(0, 3);
@@ -1892,6 +1951,7 @@ async function startScan() {
     updateTopStats();
 startAutoRefresh();
     renderTable();
+    if(done % 30 === 0) saveToStorage();
     setTimeout(next, 300);
   }
   next();
@@ -2126,6 +2186,7 @@ async function loadFundamentals(stock) {
     stock.signal = scoreToSignal(stock.totalScore);
     updateModalScore(stock);
     renderFundamentals(fd, fs);
+    saveToStorage();
     renderTable();
   } else {
     if (el) el.innerHTML='<div style="color:var(--text3);padding:20px;">Dati fondamentali non disponibili per questo ticker</div>';
@@ -2627,6 +2688,177 @@ function clearStorage() {
 // ═══════════════════════════════════════════════════════════
 // INFO / REFRESH / AUTO-UPDATE
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// PORTFOLIO ENGINE
+// ═══════════════════════════════════════════════════════════
+
+const SECTOR_COLORS = {
+  'Financials':'#4e9de8','Industrials':'#26d68a','Health Care':'#9b72e8',
+  'Consumer Disc.':'#f0b429','Consumer Staples':'#e87a4e','Materials':'#6ab8a0',
+  'Utilities':'#5ab0e8','Energy':'#e85a5a','Info Technology':'#a06ae8',
+  'Comm. Services':'#e8a838','Real Estate':'#72b86a'
+};
+
+function showPortfolio() {
+  document.getElementById('portfolio-overlay').classList.add('open');
+  buildPortfolio();
+}
+
+function closePortfolio() {
+  document.getElementById('portfolio-overlay').classList.remove('open');
+}
+
+function pfScoreColor(s) {
+  return s >= 65 ? 'var(--bull)' : s >= 42 ? 'var(--accent)' : 'var(--bear)';
+}
+
+function pfChangeColor(c) {
+  return c >= 0 ? 'var(--bull)' : 'var(--bear)';
+}
+
+function buildPortfolio() {
+  const maxSize = parseInt(document.getElementById('pf-size').value) || 25;
+  const weighting = document.getElementById('pf-weighting').value;
+  const body = document.getElementById('pf-body');
+
+  const scannedAll = UNIVERSE.filter(function(s){ return s.scanned; });
+  const candidates = scannedAll.filter(function(s){ return s.totalScore != null && s.totalScore >= 55; });
+  candidates.sort(function(a,b){ return (b.totalScore||0)-(a.totalScore||0); });
+
+  if (candidates.length < 5) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><div style="font-size:32px;margin-bottom:10px;">&#9888;</div><div style="font-family:Rajdhani,sans-serif;font-size:14px;letter-spacing:2px;">DATI INSUFFICIENTI</div><div style="font-size:11px;margin-top:8px;">Esegui prima la scansione (almeno 20-30 titoli).</div></div>';
+    return;
+  }
+
+  // Diversification: max 3 per sector
+  var selected = [];
+  var sectorCount = {};
+  var MAX_PER_SECTOR = 3;
+
+  // First pass: best per sector
+  var sectors = [];
+  candidates.forEach(function(s){ if(sectors.indexOf(s.sector)<0) sectors.push(s.sector); });
+  sectors.forEach(function(sec){
+    var best = null;
+    for(var i=0;i<candidates.length;i++){
+      if(candidates[i].sector===sec && selected.indexOf(candidates[i])<0){ best=candidates[i]; break; }
+    }
+    if(best){ selected.push(best); sectorCount[sec]=(sectorCount[sec]||0)+1; }
+  });
+
+  // Second pass: fill to maxSize
+  for(var i=0;i<candidates.length;i++){
+    if(selected.length>=maxSize) break;
+    var s=candidates[i];
+    if(selected.indexOf(s)>=0) continue;
+    var sc=sectorCount[s.sector]||0;
+    if(sc<MAX_PER_SECTOR){ selected.push(s); sectorCount[s.sector]=sc+1; }
+  }
+
+  // Weights
+  var totalScore = selected.reduce(function(sum,s){return sum+(s.totalScore||50);},0);
+  var rawWeights = selected.map(function(s){
+    if(weighting==='equal') return 1;
+    if(weighting==='score') return (s.totalScore||50)/totalScore;
+    var vol=Math.abs(s.change||1)||1; return 1/vol;
+  });
+  var wSum=rawWeights.reduce(function(a,b){return a+b;},0);
+  var normWeights=rawWeights.map(function(w){return (w/wSum)*100;});
+
+  // Stats
+  var avgScore=Math.round(selected.reduce(function(s,st){return s+(st.totalScore||0);},0)/selected.length);
+  var buyCount=selected.filter(function(s){return s.signal==='BUY';}).length;
+  var sectorsUsed=[...new Set(selected.map(function(s){return s.sector;}))].length;
+  var stoxx50count=selected.filter(function(s){return s.stoxx50;}).length;
+  var avgChange=selected.reduce(function(s,st){return s+(st.change||0);},0)/selected.length;
+
+  // Sector breakdown
+  var sectorBreakdown={};
+  selected.forEach(function(s,i){
+    if(!sectorBreakdown[s.sector]) sectorBreakdown[s.sector]={count:0,weight:0,score:0};
+    sectorBreakdown[s.sector].count++;
+    sectorBreakdown[s.sector].weight+=normWeights[i];
+    sectorBreakdown[s.sector].score+=(s.totalScore||0);
+  });
+
+  // Build HTML pieces
+  var statsHTML = '<div class="pf-stats-row">'
+    + '<div class="pf-stat"><div class="ps-val" style="color:var(--bull)">'+selected.length+'</div><div class="ps-lbl">TITOLI</div></div>'
+    + '<div class="pf-stat"><div class="ps-val" style="color:'+pfScoreColor(avgScore)+'">'+avgScore+'</div><div class="ps-lbl">SCORE MEDIO</div></div>'
+    + '<div class="pf-stat"><div class="ps-val" style="color:var(--bull)">'+sectorsUsed+'</div><div class="ps-lbl">SETTORI</div></div>'
+    + '<div class="pf-stat"><div class="ps-val" style="color:var(--accent)">'+stoxx50count+'</div><div class="ps-lbl">STOXX 50</div></div>'
+    + '<div class="pf-stat"><div class="ps-val" style="color:'+pfChangeColor(avgChange)+'">'+(avgChange>=0?'+':'')+avgChange.toFixed(2)+'%</div><div class="ps-lbl">VAR% MEDIA</div></div>'
+    + '</div>';
+
+  var tableRows='';
+  selected.forEach(function(s,i){
+    var sigSpan = s.signal==='BUY'
+      ? '<span style="color:var(--bull);font-weight:700;font-size:10px;">&#9679; BUY</span>'
+      : s.signal==='SELL'
+        ? '<span style="color:var(--bear);font-weight:700;font-size:10px;">&#9679; SELL</span>'
+        : '<span style="color:var(--accent);font-weight:700;font-size:10px;">&#9679; HOLD</span>';
+    var chStr = s.change!=null ? ((s.change>=0?'+':'')+s.change.toFixed(2)+'%') : '&mdash;';
+    var barW = Math.min(100, normWeights[i]*4);
+    tableRows += '<tr style="cursor:pointer" onclick="closePortfolio();openModal(\''+s.ticker+'\')">'
+      +'<td style="color:var(--text3);font-size:10px;">'+(i+1)+'</td>'
+      +'<td style="font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="'+s.name+'">'+s.name+'</td>'
+      +'<td style="color:var(--blue);font-weight:600;">'+s.ticker+'</td>'
+      +'<td style="color:var(--text2);font-size:10px;">'+s.sector+'</td>'
+      +'<td style="color:'+pfScoreColor(s.totalScore||0)+';font-weight:700;">'+(s.totalScore||'&mdash;')+'</td>'
+      +'<td>'+sigSpan+'</td>'
+      +'<td style="color:'+pfChangeColor(s.change||0)+'">'+chStr+'</td>'
+      +'<td><div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:700;color:var(--blue);min-width:36px;">'+normWeights[i].toFixed(1)+'%</span>'
+      +'<div class="pf-weight-bar" style="width:60px;"><div class="pf-weight-fill" style="width:'+barW+'%"></div></div></div></td>'
+      +'</tr>';
+  });
+
+  var tableHTML = '<div class="pf-section-title">&#128203; Composizione Portafoglio</div>'
+    +'<table class="pf-table"><thead><tr>'
+    +'<th>#</th><th>Nome</th><th>Ticker</th><th>Settore</th>'
+    +'<th>Score</th><th>Segnale</th><th>Var%</th>'
+    +'<th>Peso ('+(weighting==='equal'?'equal':weighting==='score'?'score-w':'low-vol')+')</th>'
+    +'</tr></thead><tbody>'+tableRows+'</tbody></table>';
+
+  var sectorCards='';
+  var sectorEntries=Object.entries(sectorBreakdown).sort(function(a,b){return b[1].weight-a[1].weight;});
+  sectorEntries.forEach(function(entry){
+    var sec=entry[0], data=entry[1];
+    var color=SECTOR_COLORS[sec]||'var(--blue)';
+    var avgSc=Math.round(data.score/data.count);
+    sectorCards+='<div class="pf-sector-card">'
+      +'<div class="pf-sector-name">'+sec+'</div>'
+      +'<div class="pf-sector-count" style="color:'+color+'">'+data.count+' titoli</div>'
+      +'<div style="font-size:10px;color:var(--text2);">'+data.weight.toFixed(1)+'% &middot; Score medio '+avgSc+'</div>'
+      +'<div class="pf-sector-bar"><div class="pf-sector-fill" style="width:'+data.weight+'%;background:'+color+'"></div></div>'
+      +'</div>';
+  });
+
+  var wMethodDesc = weighting==='equal'
+    ? 'Peso identico a tutti i titoli (1/N). Approccio semplice e robusto.'
+    : weighting==='score'
+      ? 'Peso proporzionale allo Score Totale. Chi ha score 85 pesa pi&ugrave; di chi ha 60.'
+      : 'Peso inversamente proporzionale alla volatilit&agrave; recente (|Var%|). Titoli stabili pesano di pi&ugrave;.';
+
+  var metodoHTML = '<div class="pf-section-title">&#128208; Metodologia di Selezione</div>'
+    +'<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:11px;color:var(--text2);line-height:1.8;">'
+    +'<strong style="color:var(--text)">1. Filtro candidati:</strong> Titoli con Score &ge; 55 e gi&agrave; scansionati ('+candidates.length+' eleggibili su '+scannedAll.length+' scansionati).<br>'
+    +'<strong style="color:var(--text)">2. Diversificazione:</strong> Max 3 titoli per settore &middot; Priorit&agrave; al miglior score per settore &middot; Min 7 settori coperti.<br>'
+    +'<strong style="color:var(--text)">3. Weighting &ldquo;'+weighting+'&rdquo;:</strong> '+wMethodDesc+'<br>'
+    +'<strong style="color:var(--text)">4. Ordinamento:</strong> Titoli ordinati per Score Totale decrescente.'
+    +'</div>';
+
+  var disclaimerHTML = '<div class="pf-disclaimer">'
+    +'&#9888; <strong>Disclaimer:</strong> Il portafoglio &egrave; generato algoritmicamente su dati in leggero differimento. '
+    +'Non costituisce consulenza finanziaria. Verifica sempre i dati e consulta un professionista prima di operare.'
+    +'</div>';
+
+  body.innerHTML = statsHTML + tableHTML
+    + '<div class="pf-section-title">&#127981; Diversificazione Settoriale</div>'
+    + '<div class="pf-sector-grid">'+sectorCards+'</div>'
+    + metodoHTML + disclaimerHTML;
+}
+
 function toggleSpecs() {
   const panel = document.getElementById('specs-panel');
   const arrow = document.getElementById('specs-arrow');
@@ -2680,7 +2912,58 @@ function startAutoRefresh() {
 state.filtered = [...UNIVERSE];
 renderTable();
 updateTopStats();
+// Load persisted data with stale check (4h)
+(function initStorage() {
+  try {
+    const meta = localStorage.getItem('raptor_meta_v2');
+    if (meta) {
+      const m = JSON.parse(meta);
+      const ageHours = (Date.now() - new Date(m.savedAt).getTime()) / 3600000;
+      const count = loadFromStorage();
+      if (count > 0) {
+        applyFilters();
+        updateTopStats();
+        renderTable();
+        if (ageHours > 4) {
+          const el = document.getElementById('last-update');
+          if (el) { el.style.color = 'var(--bear)'; el.textContent += ' ⚠️ Dati >4h — riscansionare'; }
+        }
+      }
+    }
+  } catch(e) { console.warn('[Storage] Init error', e); }
+})();
+startAutoRefresh();
 </script>
+
+
+<!-- PORTFOLIO MODAL -->
+<div id="portfolio-overlay" onclick="if(event.target===this)closePortfolio()">
+  <div id="portfolio-modal" onclick="event.stopPropagation()">
+    <div class="pf-header">
+      <div>
+        <div class="pf-title">💼 PORTAFOGLIO SUGGERITO</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px;">Selezione automatica basata su Score Totale · Max 25-30 titoli · Diversificazione settoriale</div>
+      </div>
+      <div class="pf-controls">
+        <label style="font-size:10px;color:var(--text2);">N° titoli:
+          <input type="number" id="pf-size" value="25" min="10" max="30" style="width:45px;margin-left:4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:3px 5px;color:var(--text);font-family:inherit;font-size:11px;">
+        </label>
+        <label style="font-size:10px;color:var(--text2);">Peso:
+          <select id="pf-weighting" style="margin-left:4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:3px 5px;color:var(--text);font-family:inherit;font-size:11px;">
+            <option value="equal">Equal Weight</option>
+            <option value="score">Score Weight</option>
+            <option value="volatility">Low Volatility</option>
+          </select>
+        </label>
+        <button class="topbar-btn" onclick="buildPortfolio()" style="font-size:11px;">🔄 Rigenera</button>
+        <button class="modal-close" onclick="closePortfolio()">✕</button>
+      </div>
+    </div>
+    <div class="pf-body" id="pf-body">
+      <div style="text-align:center;padding:40px;color:var(--text3);">Caricamento portafoglio...</div>
+    </div>
+  </div>
+</div>
 
 <!-- INFO MODAL -->
 <div id="info-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:20px;overflow-y:auto;" onclick="this.style.display='none'">
