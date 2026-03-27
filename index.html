@@ -8,21 +8,21 @@
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 :root {
-  --bg: #06090f;
-  --surface: #0d1117;
-  --surface2: #161b24;
-  --surface3: #1e2530;
-  --border: #21293a;
-  --accent: #e8a838;
-  --accent2: #c47f10;
-  --bull: #26d68a;
-  --bear: #f04f5a;
-  --neutral: #8499b8;
-  --text: #d4dce8;
-  --text2: #6a7a94;
-  --text3: #3d4f66;
-  --blue: #4e9de8;
-  --purple: #9b72e8;
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --surface2: #f0f2f7;
+  --surface3: #e4e8f0;
+  --border: #d0d7e4;
+  --accent: #b8860b;
+  --accent2: #8a6508;
+  --bull: #1a9e63;
+  --bear: #d63040;
+  --neutral: #5a6e88;
+  --text: #1a2236;
+  --text2: #4a5a72;
+  --text3: #8a9ab4;
+  --blue: #2678c8;
+  --purple: #7050c8;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; overflow: hidden; }
@@ -226,7 +226,7 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
 #modal-body { padding: 16px 20px; overflow-y: auto; max-height: calc(90vh - 150px); }
 
 /* CHART AREA */
-.chart-container { border-radius: 4px; overflow: hidden; margin-bottom: 6px; background: #070b12; }
+.chart-container { border-radius: 4px; overflow: hidden; margin-bottom: 6px; background: #f8f9fc; }
 .indicator-label {
   font-size: 10px; color: var(--text2); padding: 6px 10px 4px;
   font-family: 'Rajdhani', sans-serif; font-weight: 600; letter-spacing: 1px;
@@ -310,6 +310,62 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
 }
 .empty-state .big { font-size: 32px; }
 .empty-state .msg { font-family: 'Rajdhani', sans-serif; font-size: 14px; letter-spacing: 2px; }
+
+/* SPECS PANEL */
+.specs-toggle {
+  width: 100%; background: none; border: none; border-bottom: 1px solid var(--border);
+  padding: 12px; text-align: left; cursor: pointer; display: flex;
+  align-items: center; justify-content: space-between; transition: background .15s;
+}
+.specs-toggle:hover { background: var(--surface2); }
+.specs-toggle-label {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 11px;
+  letter-spacing: 2px; color: var(--accent); text-transform: uppercase;
+}
+.specs-arrow { color: var(--text3); font-size: 10px; transition: transform .2s; }
+.specs-arrow.open { transform: rotate(180deg); }
+#specs-panel {
+  display: none; overflow-y: auto; border-top: none;
+  max-height: calc(100vh - 300px);
+}
+#specs-panel.open { display: block; }
+.specs-section { padding: 12px; border-bottom: 1px solid var(--border); }
+.specs-section-title {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 11px;
+  letter-spacing: 1.5px; color: var(--blue); text-transform: uppercase;
+  margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.specs-indicator { margin-bottom: 12px; }
+.specs-indicator-name {
+  font-weight: 700; font-size: 11px; color: var(--text); margin-bottom: 3px;
+}
+.specs-formula {
+  font-size: 10px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 3px; padding: 5px 7px; color: var(--blue);
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; line-height: 1.5;
+  word-break: break-all;
+}
+.specs-desc { font-size: 10px; color: var(--text2); line-height: 1.5; }
+.specs-score-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 6px; }
+.specs-score-table th { text-align: left; padding: 3px 5px; color: var(--text3); font-weight: 600; border-bottom: 1px solid var(--border); }
+.specs-score-table td { padding: 3px 5px; border-bottom: 1px solid rgba(0,0,0,0.04); color: var(--text2); }
+.specs-score-table td:last-child { text-align: right; font-weight: 700; }
+.score-chip { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 9px; font-weight: 700; }
+.chip-bull { background: rgba(26,158,99,0.12); color: var(--bull); }
+.chip-neu { background: rgba(176,130,10,0.12); color: var(--accent); }
+.chip-bear { background: rgba(214,48,64,0.12); color: var(--bear); }
+.specs-example {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  padding: 8px; margin-bottom: 8px; font-size: 10px;
+}
+.specs-example-title { font-weight: 700; font-size: 10px; margin-bottom: 5px; }
+.specs-glossary-term { font-weight: 700; color: var(--text); font-size: 10px; }
+.specs-glossary-def { color: var(--text2); font-size: 10px; line-height: 1.5; margin-bottom: 8px; }
+.disclaimer-box {
+  background: rgba(176,130,10,0.06); border: 1px solid rgba(176,130,10,0.25);
+  border-radius: 4px; padding: 10px; font-size: 10px; color: var(--text2); line-height: 1.6;
+}
+
 </style>
 </head>
 <body>
@@ -327,7 +383,9 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
       <div class="topbar-stat"><span class="lbl">BEARISH</span><span class="val change-neg" id="stat-bear">—</span></div>
       <div class="topbar-stat"><span class="lbl">SCANSIONATI</span><span class="val" id="stat-scanned">0</span></div>
     </div>
+    <span id="last-update" style="font-size:10px;color:var(--text3);white-space:nowrap;">Mai aggiornato</span>
     <button class="topbar-btn" id="scan-btn" onclick="startScan()">▶ SCANSIONA TUTTI</button>
+    <button class="topbar-btn" onclick="showInfo()" title="Come funziona RAPTOR">ℹ️ INFO</button>
   </header>
 
   <div id="main">
@@ -420,6 +478,194 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
           <div class="weight-label">Fondamentale% <span id="w-fund-pct">40</span></div>
         </div>
       </div>
+
+      <!-- SPECS PANEL TOGGLE -->
+      <button class="specs-toggle" onclick="toggleSpecs()">
+        <span class="specs-toggle-label">📖 Specifiche & Rating</span>
+        <span class="specs-arrow" id="specs-arrow">▼</span>
+      </button>
+      <div id="specs-panel">
+
+        <!-- 1. INDICATORI TECNICI -->
+        <div class="specs-section">
+          <div class="specs-section-title">📈 Indicatori Tecnici</div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">RSI — Relative Strength Index</div>
+            <div class="specs-formula">RS = Avg(gains,14) / Avg(losses,14)<br>RSI = 100 − 100/(1+RS)</div>
+            <div class="specs-desc">Misura la velocità e il cambiamento dei movimenti di prezzo. Periodo: 14 giorni.</div>
+          </div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">MACD — Moving Avg Convergence Divergence</div>
+            <div class="specs-formula">MACD = EMA(12) − EMA(26)<br>Signal = EMA(MACD, 9)<br>Histogram = MACD − Signal</div>
+            <div class="specs-desc">Indicatore di trend e momentum. Crossover rialzista quando MACD supera Signal.</div>
+          </div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">Bande di Bollinger</div>
+            <div class="specs-formula">Mid = SMA(20)<br>Upper = SMA(20) + 2×σ(20)<br>Lower = SMA(20) − 2×σ(20)</div>
+            <div class="specs-desc">Misurano la volatilità. Il prezzo rimbalza sulla banda inferiore = segnale rialzista.</div>
+          </div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">SAR Parabolico</div>
+            <div class="specs-formula">SAR(n) = SAR(n-1) + AF × (EP − SAR(n-1))<br>AF iniziale = 0.02, max = 0.20</div>
+            <div class="specs-desc">Trailing stop che cambia lato quando il trend si inverte. SAR sotto il prezzo = uptrend.</div>
+          </div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">SuperTrend</div>
+            <div class="specs-formula">HL2 = (High + Low) / 2<br>Upper = HL2 + 3×ATR(10)<br>Lower = HL2 − 3×ATR(10)</div>
+            <div class="specs-desc">Basato sull'ATR (True Range medio). Moltiplicatore: 3. Periodo: 10. Verde = bullish.</div>
+          </div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">KAMA — Kaufman Adaptive Moving Average</div>
+            <div class="specs-formula">ER = |Change(10)| / Σ|Change(1)|<br>SC = (ER×(fast−slow)+slow)²<br>KAMA = KAMA(n-1) + SC×(Price−KAMA(n-1))</div>
+            <div class="specs-desc">Si adatta alla volatilità. Rapida(10) vs Lenta(20): crossover = cambio trend.</div>
+          </div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">OBV — On-Balance Volume</div>
+            <div class="specs-formula">Se Close↑: OBV += Volume<br>Se Close↓: OBV −= Volume<br>Se Close=: OBV invariato</div>
+            <div class="specs-desc">Conferma i trend con i volumi. OBV crescente con prezzo piatto = accumulazione.</div>
+          </div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">Medie Mobili</div>
+            <div class="specs-formula">SMA(n) = Σ(Close) / n<br>EMA(n) = Close×k + EMA(n-1)×(1-k)<br>k = 2/(n+1)</div>
+            <div class="specs-desc">SMA 20/50/200 giorni. Prezzo > MA200 = trend rialzista di lungo periodo.</div>
+          </div>
+        </div>
+
+        <!-- 2. LOGICA SCORING -->
+        <div class="specs-section">
+          <div class="specs-section-title">🔢 Logica Scoring 0-100</div>
+          <div class="specs-desc" style="margin-bottom:10px;">Ogni indicatore produce un punteggio parziale che viene pesato. La formula finale è:</div>
+          <div class="specs-formula">Score = Σ(punteggio_i × peso_i) / Σ(pesi)</div>
+
+          <div style="font-size:10px;font-weight:700;color:var(--text);margin:8px 0 4px;">Scoring RSI:</div>
+          <table class="specs-score-table">
+            <tr><th>RSI</th><th>Punteggio</th><th>Interpretazione</th></tr>
+            <tr><td>&lt; 20</td><td><span class="score-chip chip-bull">60</span></td><td>Fortemente ipervenduto</td></tr>
+            <tr><td>20–30</td><td><span class="score-chip chip-bull">70</span></td><td>Ipervenduto</td></tr>
+            <tr><td>30–40</td><td><span class="score-chip chip-bull">65</span></td><td>Zona di acquisto</td></tr>
+            <tr><td>40–60</td><td><span class="score-chip chip-neu">50</span></td><td>Neutro</td></tr>
+            <tr><td>60–70</td><td><span class="score-chip chip-bear">40</span></td><td>Zona di attenzione</td></tr>
+            <tr><td>70–80</td><td><span class="score-chip chip-bear">25</span></td><td>Ipercomprato</td></tr>
+            <tr><td>&gt; 80</td><td><span class="score-chip chip-bear">15</span></td><td>Fortemente ipercomprato</td></tr>
+          </table>
+
+          <div style="font-size:10px;font-weight:700;color:var(--text);margin:8px 0 4px;">Scoring MA Trend:</div>
+          <table class="specs-score-table">
+            <tr><th>Condizione</th><th>+Punti</th></tr>
+            <tr><td>Prezzo &gt; MA200</td><td>+15</td></tr>
+            <tr><td>Prezzo &gt; MA50</td><td>+10</td></tr>
+            <tr><td>MA50 &gt; MA200 (Golden Cross)</td><td>+15</td></tr>
+            <tr><td>Prezzo &gt; MA20</td><td>+10</td></tr>
+            <tr><td>Base di partenza</td><td>50</td></tr>
+          </table>
+
+          <div style="font-size:10px;font-weight:700;color:var(--text);margin:8px 0 4px;">Score Totale:</div>
+          <div class="specs-formula">Score = (TechScore×60% + FundScore×40%)<br>↑ modificabile via slider nella sidebar</div>
+        </div>
+
+        <!-- 3. SOGLIE FONDAMENTALI -->
+        <div class="specs-section">
+          <div class="specs-section-title">📊 Soglie Fondamentali</div>
+          <table class="specs-score-table">
+            <tr><th>Metrica</th><th>Ottimo</th><th>Buono</th><th>Alto</th></tr>
+            <tr><td>P/E</td><td>&lt;10</td><td>&lt;15</td><td>&lt;25</td></tr>
+            <tr><td>P/B</td><td>&lt;1</td><td>&lt;2</td><td>&lt;4</td></tr>
+            <tr><td>EV/EBITDA</td><td>&lt;8×</td><td>&lt;12×</td><td>&lt;20×</td></tr>
+            <tr><td>PEG</td><td>&lt;0.5</td><td>&lt;1.0</td><td>&lt;2.0</td></tr>
+            <tr><td>ROE</td><td>&gt;20%</td><td>&gt;12%</td><td>&gt;5%</td></tr>
+            <tr><td>ROIC</td><td>&gt;15%</td><td>&gt;10%</td><td>&gt;5%</td></tr>
+            <tr><td>Margine netto</td><td>&gt;15%</td><td>&gt;8%</td><td>&gt;3%</td></tr>
+            <tr><td>Debt/Equity</td><td>&lt;0.3</td><td>&lt;0.7</td><td>&lt;1.5</td></tr>
+            <tr><td>Current Ratio</td><td>&gt;2.5</td><td>&gt;1.5</td><td>&gt;1.0</td></tr>
+            <tr><td>EPS Growth</td><td>&gt;15%</td><td>&gt;5%</td><td>&gt;-5%</td></tr>
+            <tr><td>Rev Growth</td><td>&gt;10%</td><td>&gt;3%</td><td>&gt;-3%</td></tr>
+          </table>
+          <div class="specs-desc">Valori oltre la soglia "Alto" (o sotto per metriche inverse) ricevono punteggio basso (25/100).</div>
+        </div>
+
+        <!-- 4. ESEMPI CONCRETI -->
+        <div class="specs-section">
+          <div class="specs-section-title">💡 Esempi Concreti</div>
+
+          <div class="specs-example">
+            <div class="specs-example-title" style="color:var(--bull);">✅ Titolo BUY — Score 78</div>
+            <div class="specs-desc">
+              RSI = 35 (zona acquisto → 65pt) · MACD crossover rialzista → 75pt · Prezzo &gt; MA200 e MA50 &gt; MA200 → 80pt · SAR bullish · SuperTrend verde · KAMA fast &gt; slow · OBV crescente.<br>
+              Fondamentali: P/E 12× · ROE 18% · D/E 0.4 · EPS growth +12%.
+            </div>
+          </div>
+
+          <div class="specs-example">
+            <div class="specs-example-title" style="color:var(--bear);">❌ Titolo SELL — Score 28</div>
+            <div class="specs-desc">
+              RSI = 78 (ipercomprato → 25pt) · MACD negativo e sotto Signal → 30pt · Prezzo &lt; MA200 · SAR bearish · SuperTrend rosso · KAMA fast &lt; slow · OBV calante.<br>
+              Fondamentali: P/E 45× · ROE 3% · D/E 2.1 · EPS growth −8%.
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. GLOSSARIO -->
+        <div class="specs-section">
+          <div class="specs-section-title">📚 Glossario</div>
+          <div class="specs-glossary-term">RSI (Relative Strength Index)</div>
+          <div class="specs-glossary-def">Oscillatore 0-100. &lt;30 = ipervenduto (opportunità), &gt;70 = ipercomprato (attenzione).</div>
+
+          <div class="specs-glossary-term">MACD</div>
+          <div class="specs-glossary-def">Differenza tra EMA12 e EMA26. Crossover al rialzo della Signal line = segnale bullish.</div>
+
+          <div class="specs-glossary-term">SAR Parabolico</div>
+          <div class="specs-glossary-def">Stop And Reverse. Puntino sotto il prezzo = uptrend, sopra = downtrend.</div>
+
+          <div class="specs-glossary-term">SuperTrend</div>
+          <div class="specs-glossary-def">Indicatore basato su ATR. Banda verde sotto = bullish, rossa sopra = bearish.</div>
+
+          <div class="specs-glossary-term">KAMA</div>
+          <div class="specs-glossary-def">Media mobile adattiva di Kaufman. Si muove lento nei mercati laterali, veloce nei trend.</div>
+
+          <div class="specs-glossary-term">OBV (On-Balance Volume)</div>
+          <div class="specs-glossary-def">Accumula/decumula il volume secondo la direzione del prezzo. Divergenze segnalano inversioni.</div>
+
+          <div class="specs-glossary-term">ATR (Average True Range)</div>
+          <div class="specs-glossary-def">Misura la volatilità media giornaliera. Usato da SuperTrend per calibrare le bande.</div>
+
+          <div class="specs-glossary-term">P/E (Price/Earnings)</div>
+          <div class="specs-glossary-def">Prezzo diviso utile per azione. Basso = potenzialmente sottovalutato.</div>
+
+          <div class="specs-glossary-term">PEG Ratio</div>
+          <div class="specs-glossary-def">P/E diviso tasso di crescita EPS. &lt;1 = crescita non ancora prezzata dal mercato.</div>
+
+          <div class="specs-glossary-term">ROIC</div>
+          <div class="specs-glossary-def">Return On Invested Capital. Misura l'efficienza con cui l'azienda usa il capitale investito.</div>
+
+          <div class="specs-glossary-term">Golden Cross / Death Cross</div>
+          <div class="specs-glossary-def">Golden Cross = MA50 supera MA200 (bullish). Death Cross = MA50 scende sotto MA200 (bearish).</div>
+        </div>
+
+        <!-- 6. LIMITI E DISCLAIMER -->
+        <div class="specs-section">
+          <div class="specs-section-title">⚠️ Limiti & Disclaimer</div>
+          <div class="disclaimer-box">
+            <strong>Limiti del sistema:</strong><br>
+            · I dati provengono da Yahoo Finance con leggero differimento.<br>
+            · Lo scoring tecnico è retrospettivo (basato su dati storici).<br>
+            · I dati fondamentali potrebbero non essere aggiornati all'ultimo trimestre.<br>
+            · Titoli con bassa liquidità possono generare segnali anomali.<br>
+            · Il proxy CORS può rallentare o fallire con molti titoli simultanei.<br><br>
+            <strong>Disclaimer:</strong><br>
+            RAPTOR è uno strumento di <em>supporto all'analisi</em>, non uno strumento di consulenza finanziaria. I segnali BUY/HOLD/SELL sono indicatori quantitativi, non raccomandazioni di investimento. Prima di qualsiasi operazione, effettua sempre la tua analisi e/o consulta un professionista abilitato.
+          </div>
+        </div>
+
+      </div><!-- end specs-panel -->
+
     </aside>
 
     <!-- TABLE AREA -->
@@ -479,6 +725,7 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
         <div style="font-size:9px;color:var(--text2);letter-spacing:1px;">SCORE</div>
         <div id="m-signal-display" style="margin-top:4px;"></div>
       </div>
+      <button class="topbar-btn" onclick="refreshStock()" title="Ricarica dati aggiornati" style="margin-left:0;font-size:11px;">🔄 Aggiorna</button>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-tabs">
@@ -1540,6 +1787,7 @@ async function startScan() {
     if (!state.scanning || scanQueue.length===0) {
       state.scanning=false; updateScanBtn();
       document.getElementById('scan-progress').style.display='none';
+      updateLastUpdate();
       return;
     }
     const batch = scanQueue.splice(0, 3);
@@ -1571,6 +1819,7 @@ async function startScan() {
       s.signal=scoreToSignal(s.totalScore);
     });
     updateTopStats();
+startAutoRefresh();
     renderTable();
     setTimeout(next, 300);
   }
@@ -1828,11 +2077,11 @@ async function loadNews(stock) {
 // CHARTS
 // ═══════════════════════════════════════════════════════════
 const chartOptions = {
-  layout: { background: {type:'Solid', color:'#070b12'}, textColor:'#6a7a94' },
+  layout: { background: {type:'Solid', color:'#f8f9fc'}, textColor:'#6a7a94' },
   grid: { vertLines:{color:'#141c28'}, horzLines:{color:'#141c28'} },
   crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-  timeScale: { borderColor:'#21293a', timeVisible:true },
-  rightPriceScale: { borderColor:'#21293a' }
+  timeScale: { borderColor:'#d0d7e4', timeVisible:true },
+  rightPriceScale: { borderColor:'#d0d7e4' }
 };
 
 function destroyCharts() {
@@ -2118,10 +2367,132 @@ document.getElementById('search-input').addEventListener('input', e=>{
 
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 
+
+// ═══════════════════════════════════════════════════════════
+// INFO / REFRESH / AUTO-UPDATE
+// ═══════════════════════════════════════════════════════════
+function toggleSpecs() {
+  const panel = document.getElementById('specs-panel');
+  const arrow = document.getElementById('specs-arrow');
+  panel.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+function showInfo() {
+  document.getElementById('info-overlay').style.display = 'flex';
+}
+
+function updateLastUpdate() {
+  const now = new Date();
+  const str = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'});
+  const el = document.getElementById('last-update');
+  if(el) el.textContent = 'Aggiornato: ' + str;
+}
+
+async function refreshStock() {
+  const stock = state.selectedStock;
+  if (!stock) return;
+  const btn = document.querySelector('#modal button[onclick="refreshStock()"]');
+  if(btn) { btn.textContent = '⏳ Carico...'; btn.disabled = true; }
+  stock.techData = null;
+  stock.fundData = null;
+  stock.scanned = false;
+  // Reload chart
+  if(state.currentTab === 'chart') {
+    document.getElementById('chart-main').innerHTML = '<div style="height:320px;display:flex;align-items:center;justify-content:center;color:var(--text3)">Aggiornamento in corso...</div>';
+  }
+  await loadModalData(stock);
+  if(btn) { btn.textContent = '🔄 Aggiorna'; btn.disabled = false; }
+  updateLastUpdate();
+}
+
+// Auto refresh every 30 minutes — only re-scans already scanned stocks
+let autoRefreshTimer = null;
+function startAutoRefresh() {
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(async () => {
+    const scanned = UNIVERSE.filter(s => s.scanned && !state.scanning);
+    if(scanned.length === 0) return;
+    console.log('[AutoRefresh] Refreshing', scanned.length, 'stocks...');
+    // Reset scanned flag so scan picks them up again
+    scanned.forEach(s => { s.scanned = false; s.techData = null; });
+    await startScan();
+  }, 30 * 60 * 1000); // 30 minutes
+}
+
 // Init
 state.filtered = [...UNIVERSE];
 renderTable();
 updateTopStats();
 </script>
+
+<!-- INFO MODAL -->
+<div id="info-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:20px;overflow-y:auto;" onclick="this.style.display='none'">
+  <div onclick="event.stopPropagation()" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;max-width:720px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--accent);letter-spacing:3px;">RAPTOR — COME FUNZIONA</div>
+      <button onclick="document.getElementById('info-overlay').style.display='none'" style="background:none;border:1px solid var(--border);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:16px;color:var(--text2);">✕</button>
+    </div>
+
+    <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">🔢 Motore di Scoring</div>
+    <p style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:14px;">Ogni titolo riceve uno <strong style="color:var(--text)">Score Totale 0-100</strong>, calcolato come media pesata di due componenti configurabili via slider (default 60% Tecnico / 40% Fondamentale).</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;">
+        <div style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--blue);margin-bottom:10px;font-size:13px;">📈 SCORE TECNICO (0-100)</div>
+        <table style="width:100%;font-size:11px;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">Trend MA (20/50/200)</td><td style="text-align:right;font-weight:600;">25%</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">RSI (14 periodi)</td><td style="text-align:right;font-weight:600;">20%</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">MACD (12,26,9)</td><td style="text-align:right;font-weight:600;">20%</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">SAR + SuperTrend</td><td style="text-align:right;font-weight:600;">15%</td></tr>
+          <tr><td style="padding:4px 0;color:var(--text2);">KAMA + OBV</td><td style="text-align:right;font-weight:600;">20%</td></tr>
+        </table>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px;">Calcolo su 250 giorni storici (1 anno). Tutti i pesi sono modificabili nella sidebar.</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;">
+        <div style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--purple);margin-bottom:10px;font-size:13px;">📊 SCORE FONDAMENTALE (0-100)</div>
+        <table style="width:100%;font-size:11px;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">Valutazione (P/E, P/B, EV/EBITDA, PEG)</td><td style="text-align:right;font-weight:600;">20%</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">Qualità (ROE, ROIC, Margine netto)</td><td style="text-align:right;font-weight:600;">20%</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">Solidità (Debt/Equity, Current Ratio)</td><td style="text-align:right;font-weight:600;">15%</td></tr>
+          <tr><td style="padding:4px 0;color:var(--text2);">Crescita (EPS Growth, Revenue Growth)</td><td style="text-align:right;font-weight:600;">15%</td></tr>
+        </table>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px;">Dati da Yahoo Finance quoteSummary. Caricati aprendo la scheda "Bilancio" del singolo titolo.</div>
+      </div>
+    </div>
+
+    <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1.5px;color:var(--accent);margin-bottom:10px;text-transform:uppercase;">🚦 Legenda Segnali</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;">
+      <div style="background:rgba(26,158,99,0.08);border:1px solid rgba(26,158,99,0.3);border-radius:6px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:var(--bull);font-family:'Rajdhani',sans-serif;">BUY</div>
+        <div style="font-size:13px;font-weight:700;color:var(--bull);">Score ≥ 65</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:6px;line-height:1.5;">Titolo con segnali tecnici e/o fondamentali positivi. Candidato da analizzare per acquisto.</div>
+      </div>
+      <div style="background:rgba(176,130,10,0.08);border:1px solid rgba(176,130,10,0.3);border-radius:6px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:var(--accent);font-family:'Rajdhani',sans-serif;">HOLD</div>
+        <div style="font-size:13px;font-weight:700;color:var(--accent);">Score 42–64</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:6px;line-height:1.5;">Segnali misti o neutri. Nessuna indicazione chiara di acquisto o vendita.</div>
+      </div>
+      <div style="background:rgba(214,48,64,0.08);border:1px solid rgba(214,48,64,0.3);border-radius:6px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:var(--bear);font-family:'Rajdhani',sans-serif;">SELL</div>
+        <div style="font-size:13px;font-weight:700;color:var(--bear);">Score &lt; 42</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:6px;line-height:1.5;">Segnali tecnici e/o fondamentali negativi. Candidato a pressione ribassista.</div>
+      </div>
+    </div>
+
+    <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1.5px;color:var(--accent);margin-bottom:10px;text-transform:uppercase;">🔄 Aggiornamento Dati</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:12px;color:var(--text2);line-height:1.7;">
+      <strong style="color:var(--text)">Manuale:</strong> premi <strong>▶ SCANSIONA TUTTI</strong> per lanciare la scansione completa di tutti i 580 titoli (elabora 3 alla volta, ~8-12 minuti totali). Puoi fermarlo con <strong>⏹ STOP</strong> in qualsiasi momento.<br><br>
+      <strong style="color:var(--text)">Automatico:</strong> la pagina aggiorna in background automaticamente ogni <strong>30 minuti</strong> (solo i titoli già scansionati). L'ora dell'ultimo aggiornamento appare in alto a destra.<br><br>
+      <strong style="color:var(--text)">Singolo titolo:</strong> apri la scheda del titolo e premi <strong>🔄 Aggiorna</strong> per forzare il reload dei dati di quel titolo.<br><br>
+      <em style="color:var(--text3);">Fonte dati: Yahoo Finance (prezzi, fondamentali, notizie) via proxy CORS. I dati di prezzo sono in leggero differito rispetto al mercato.</em>
+    </div>
+
+    <div style="margin-top:16px;padding:10px 14px;background:rgba(176,130,10,0.06);border:1px solid rgba(176,130,10,0.2);border-radius:6px;font-size:11px;color:var(--text3);line-height:1.6;">
+      ⚠️ <strong style="color:var(--text2)">Disclaimer:</strong> RAPTOR è uno strumento di analisi quantitativa a supporto delle decisioni. I segnali generati NON costituiscono consulenza finanziaria. Verifica sempre i dati e consulta un professionista prima di effettuare investimenti.
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
