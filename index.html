@@ -385,6 +385,8 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
     </div>
     <span id="last-update" style="font-size:10px;color:var(--text3);white-space:nowrap;">Mai aggiornato</span>
     <button class="topbar-btn" id="scan-btn" onclick="startScan()">▶ SCANSIONA TUTTI</button>
+    <button class="topbar-btn" id="notify-btn" onclick="requestNotifications()" title="Abilita notifiche cambio segnale">🔕 Notifiche</button>
+    <button class="topbar-btn" onclick="clearStorage()" title="Svuota cache dati" style="font-size:10px;">🗑 Cache</button>
     <button class="topbar-btn" onclick="showInfo()" title="Come funziona RAPTOR">ℹ️ INFO</button>
   </header>
 
@@ -469,6 +471,11 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
           <input type="range" class="weight-slider" min="0" max="50" value="15" id="w-grow-s" oninput="updateWeight('grow',this.value)">
         </div>
 
+        <div class="weight-row">
+          <div class="weight-label">RS vs Indice <span id="w-rs">15</span></div>
+          <input type="range" class="weight-slider" min="0" max="30" value="15" id="w-rs-s" oninput="updateWeight('rs',this.value)">
+        </div>
+
         <div class="weight-divider">Mix Finale</div>
         <div class="weight-row">
           <div class="weight-label">Tecnico% <span id="w-tech-pct">60</span></div>
@@ -537,6 +544,34 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
             <div class="specs-formula">SMA(n) = Σ(Close) / n<br>EMA(n) = Close×k + EMA(n-1)×(1-k)<br>k = 2/(n+1)</div>
             <div class="specs-desc">SMA 20/50/200 giorni. Prezzo > MA200 = trend rialzista di lungo periodo.</div>
           </div>
+        </div>
+
+
+        <!-- RS RELATIVA -->
+        <div class="specs-section">
+          <div class="specs-section-title">📐 RS Relativa vs Indice</div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">Relative Strength (RS) — Non RSI!</div>
+            <div class="specs-formula">RS = Rend.Titolo(N) − Rend.Indice(N)<br>Periodi: 1M (21gg), 3M (63gg), 6M (126gg)</div>
+            <div class="specs-desc">Misura quanto il titolo ha reso in più o in meno rispetto al suo indice di riferimento (STOXX 600 o STOXX 50) negli ultimi N giorni. Valore positivo = outperformance.</div>
+          </div>
+
+          <div class="specs-indicator">
+            <div class="specs-indicator-name">Beta (20 giorni rolling)</div>
+            <div class="specs-formula">β = Cov(Rend.Titolo, Rend.Indice) / Var(Rend.Indice)</div>
+            <div class="specs-desc">Misura la sensibilità del titolo ai movimenti dell'indice. β &gt; 1 = amplifica i movimenti, β &lt; 1 = difensivo.</div>
+          </div>
+
+          <div style="font-size:10px;font-weight:700;color:var(--text);margin:8px 0 4px;">Score RS (0-100):</div>
+          <table class="specs-score-table">
+            <tr><th>Outperformance su</th><th>Score base</th></tr>
+            <tr><td>0 periodi su 3</td><td><span class="score-chip chip-bear">20</span></td></tr>
+            <tr><td>1 periodo su 3</td><td><span class="score-chip chip-bear">45</span></td></tr>
+            <tr><td>2 periodi su 3</td><td><span class="score-chip chip-neu">65</span></td></tr>
+            <tr><td>3 periodi su 3</td><td><span class="score-chip chip-bull">85</span></td></tr>
+          </table>
+          <div class="specs-desc">Il differenziale 3M aggiunge/toglie fino a 10 punti. La RS contribuisce al 15% dello Score Tecnico (modificabile via slider).</div>
         </div>
 
         <!-- 2. LOGICA SCORING -->
@@ -644,6 +679,12 @@ tr.selected td { background: rgba(232,168,56,0.05); border-left: 2px solid var(-
 
           <div class="specs-glossary-term">ROIC</div>
           <div class="specs-glossary-def">Return On Invested Capital. Misura l'efficienza con cui l'azienda usa il capitale investito.</div>
+
+          <div class="specs-glossary-term">RS Relativa (Relative Strength)</div>
+          <div class="specs-glossary-def">Differenza di rendimento tra il titolo e il suo indice di riferimento. Da non confondere con RSI. Valore positivo = il titolo batte l'indice (outperformer).</div>
+
+          <div class="specs-glossary-term">Beta</div>
+          <div class="specs-glossary-def">Misura di volatilità relativa. β=1.5 significa che il titolo sale/scende del 50% in più rispetto all'indice.</div>
 
           <div class="specs-glossary-term">Golden Cross / Death Cross</div>
           <div class="specs-glossary-def">Golden Cross = MA50 supera MA200 (bullish). Death Cross = MA50 scende sotto MA200 (bearish).</div>
@@ -1623,11 +1664,13 @@ function calcFundScore(fd, weights) {
   return {score:Math.round(total),breakdown:s,valScore:Math.round(valScore),qualScore:Math.round(qualScore),solScore:Math.round(solScore),growScore:Math.round(growScore)};
 }
 
-function calcTotalScore(techScore, fundScore, techPct) {
-  if (techScore==null&&fundScore==null) return null;
-  const t = techScore??50, f = fundScore??50;
+function calcTotalScore(techScore, fundScore, techPct, rsScore) {
+  if (techScore==null&&fundScore==null&&rsScore==null) return null;
+  const t = techScore??50, f = fundScore??50, rs = rsScore??50;
   const fp = 100 - techPct;
-  return Math.round((techPct*t + fp*f)/100);
+  // RS contributes 15% of the tech portion
+  const techAdj = t * 0.85 + rs * 0.15;
+  return Math.round((techPct*techAdj + fp*f)/100);
 }
 
 function scoreToSignal(s) {
@@ -1750,23 +1793,49 @@ async function fetchFundamentals(ticker) {
   };
 }
 
+const NEWS_API_KEY = '58487d65163747919de5501f84917388';
+
 async function fetchNews(ticker) {
-  const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${ticker}&region=US&lang=en-US`;
+  // Extract clean company name from stock
+  const stock = UNIVERSE.find(s => s.ticker === ticker);
+  const query = stock ? stock.name.split(' ').slice(0,2).join(' ') : ticker.split('.')[0];
+  
+  // Try NewsAPI first
   try {
-    const proxy = PROXY + encodeURIComponent(url);
-    const r = await fetch(proxy, {signal: AbortSignal.timeout(6000)});
-    if (!r.ok) return [];
-    const text = await r.text();
-    const dp = new DOMParser();
-    const doc = dp.parseFromString(text, 'text/xml');
-    const items = doc.querySelectorAll('item');
-    return Array.from(items).slice(0,8).map(it=>({
-      title: it.querySelector('title')?.textContent?.trim()||'',
-      link: it.querySelector('link')?.textContent?.trim()||'',
-      pubDate: it.querySelector('pubDate')?.textContent?.trim()||'',
-      desc: it.querySelector('description')?.textContent?.trim()||''
-    }));
-  } catch(e) { return []; }
+    const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=8&apiKey=${NEWS_API_KEY}`;
+    const r = await fetch(url, {signal: AbortSignal.timeout(8000)});
+    if (r.ok) {
+      const data = await r.json();
+      if (data.articles && data.articles.length > 0) {
+        return data.articles.map(a => ({
+          title: a.title || '',
+          link: a.url || '',
+          pubDate: a.publishedAt || '',
+          desc: a.description || '',
+          source: a.source?.name || ''
+        }));
+      }
+    }
+  } catch(e) {}
+
+  // Fallback: Yahoo Finance RSS via proxy
+  try {
+    const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${ticker}&region=US&lang=en-US`;
+    const r = await fetch(PROXY + encodeURIComponent(url), {signal: AbortSignal.timeout(6000)});
+    if (r.ok) {
+      const text = await r.text();
+      const doc = new DOMParser().parseFromString(text, 'text/xml');
+      const items = doc.querySelectorAll('item');
+      return Array.from(items).slice(0,8).map(it=>({
+        title: it.querySelector('title')?.textContent?.trim()||'',
+        link: it.querySelector('link')?.textContent?.trim()||'',
+        pubDate: it.querySelector('pubDate')?.textContent?.trim()||'',
+        desc: it.querySelector('description')?.textContent?.trim()||'',
+        source: 'Yahoo Finance'
+      }));
+    }
+  } catch(e) {}
+  return [];
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1815,8 +1884,10 @@ async function startScan() {
       const fs=calcFundScore(s.fundData, state.weights);
       s.techScore=ts?.score??null;
       s.fundScore=fs?.score??null;
-      s.totalScore=calcTotalScore(s.techScore, s.fundScore, state.weights.techPct);
+      s.totalScore=calcTotalScore(s.techScore, s.fundScore, state.weights.techPct, s.rsScore);
+      const oldSig = s.signal;
       s.signal=scoreToSignal(s.totalScore);
+      if(oldSig && oldSig !== s.signal) notifySignalChange(s, oldSig, s.signal);
     });
     updateTopStats();
 startAutoRefresh();
@@ -2245,6 +2316,18 @@ function renderSignalGrid(td, stock) {
     {name:'Score Fund.', val:stock.fundScore!=null?stock.fundScore:'—', sub:'Carica dati fond.', cls:fsCls},
   ];
 
+  // Add RS cards if available
+  const rsData = stock.rsData;
+  if(rsData) {
+    const fmt = (v) => v!=null ? (v>=0?'+':'')+v.toFixed(1)+'%' : '—';
+    const rsCls = (v) => v==null?'s-neu':v>0?'s-bull':'s-bear';
+    const m1diff = rsData.m1?.diff, m3diff = rsData.m3?.diff, m6diff = rsData.m6?.diff;
+    cards.push({name:'RS vs Indice 1M', val:fmt(m1diff), sub: rsData.m1 ? 'Titolo: '+fmt(rsData.m1.stock)+' / Idx: '+fmt(rsData.m1.index) : '—', cls:rsCls(m1diff)});
+    cards.push({name:'RS vs Indice 3M', val:fmt(m3diff), sub: rsData.m3 ? 'Titolo: '+fmt(rsData.m3.stock)+' / Idx: '+fmt(rsData.m3.index) : '—', cls:rsCls(m3diff)});
+    cards.push({name:'RS vs Indice 6M', val:fmt(m6diff), sub: rsData.m6 ? 'Titolo: '+fmt(rsData.m6.stock)+' / Idx: '+fmt(rsData.m6.index) : '—', cls:rsCls(m6diff)});
+    if(rsData.beta != null) cards.push({name:'Beta (20gg)', val:rsData.beta.toFixed(2), sub:rsData.beta>1.2?'Alta volatilità':rsData.beta<0.8?'Difensivo':'Neutro', cls:rsData.beta>1.5?'s-bear':rsData.beta<0.7?'s-bull':'s-neu'});
+  }
+
   document.getElementById('signal-grid').innerHTML = cards.map(c=>`
     <div class="signal-card">
       <div class="s-name">${c.name}</div>
@@ -2320,8 +2403,14 @@ function renderAnalyst(fd) {
 function renderNews(items) {
   document.getElementById('news-list').innerHTML = items.map(item=>`
     <div class="news-item">
-      <div class="news-date">${formatDate(item.pubDate)}</div>
-      <div class="news-title"><a href="${item.link}" target="_blank">${item.title}</a></div>
+      <div class="news-date">
+        <div>${formatDate(item.pubDate)}</div>
+        ${item.source ? '<div style="color:var(--text3);font-size:9px;margin-top:2px;">'+item.source+'</div>' : ''}
+      </div>
+      <div>
+        <div class="news-title"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
+        ${item.desc ? '<div style="font-size:10px;color:var(--text2);margin-top:3px;line-height:1.4;">'+item.desc.slice(0,120)+'...</div>' : ''}
+      </div>
     </div>`).join('');
 }
 
@@ -2367,6 +2456,173 @@ document.getElementById('search-input').addEventListener('input', e=>{
 
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 
+
+
+
+
+// ═══════════════════════════════════════════════════════════
+// BROWSER NOTIFICATIONS — signal changes
+// ═══════════════════════════════════════════════════════════
+let notificationsEnabled = false;
+
+async function requestNotifications() {
+  if (!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  notificationsEnabled = perm === 'granted';
+  const btn = document.getElementById('notify-btn');
+  if(btn) btn.textContent = notificationsEnabled ? '🔔 ON' : '🔕 OFF';
+}
+
+function notifySignalChange(stock, oldSignal, newSignal) {
+  if (!notificationsEnabled || !oldSignal || oldSignal === newSignal || oldSignal === 'N/A') return;
+  const emoji = newSignal === 'BUY' ? '🟢' : newSignal === 'SELL' ? '🔴' : '🟡';
+  new Notification('RAPTOR — Cambio Segnale', {
+    body: emoji + ' ' + stock.name + ': ' + oldSignal + ' → ' + newSignal + ' (Score: ' + stock.totalScore + ')',
+    icon: 'https://giorgiogoldoni.github.io/stoxx600/favicon.ico',
+    tag: stock.ticker
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RS RELATIVA vs STOXX 600 / STOXX 50
+// ═══════════════════════════════════════════════════════════
+let indexData = { stoxx600: null, stoxx50: null };
+
+async function fetchIndexData() {
+  const tickers = { stoxx600: '^STOXX', stoxx50: '^STOXX50E' };
+  for (const [key, ticker] of Object.entries(tickers)) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
+      const data = await fetchWithProxy(url);
+      if (data?.chart?.result?.[0]) {
+        const r = data.chart.result[0];
+        const closes = r.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+        if (closes.length > 20) indexData[key] = closes;
+      }
+    } catch(e) {}
+  }
+  console.log('[Index] STOXX600:', indexData.stoxx600?.length||0, 'days, STOXX50:', indexData.stoxx50?.length||0, 'days');
+}
+
+function calcRS(stockCloses, indexCloses) {
+  if (!stockCloses || !indexCloses || stockCloses.length < 20 || indexCloses.length < 20) return null;
+  const periods = { m1: 21, m3: 63, m6: 126 };
+  const result = {};
+  for (const [label, days] of Object.entries(periods)) {
+    const sLen = stockCloses.length, iLen = indexCloses.length;
+    if (sLen < days || iLen < days) continue;
+    const sRet = (stockCloses[sLen-1] - stockCloses[sLen-days]) / stockCloses[sLen-days] * 100;
+    const iRet = (indexCloses[iLen-1] - indexCloses[iLen-days]) / indexCloses[iLen-days] * 100;
+    result[label] = { stock: sRet, index: iRet, diff: sRet - iRet, outperform: sRet > iRet };
+  }
+  // Beta (20-day rolling)
+  const n = Math.min(20, sLen-1, iLen-1);
+  const sRets = [], iRets = [];
+  const sLen = stockCloses.length, iLen = indexCloses.length;
+  for (let i = 0; i < n; i++) {
+    sRets.push((stockCloses[sLen-1-i] - stockCloses[sLen-2-i]) / stockCloses[sLen-2-i]);
+    iRets.push((indexCloses[iLen-1-i] - indexCloses[iLen-2-i]) / indexCloses[iLen-2-i]);
+  }
+  const sAvg = sRets.reduce((a,b)=>a+b,0)/n;
+  const iAvg = iRets.reduce((a,b)=>a+b,0)/n;
+  let cov = 0, iVar = 0;
+  for (let i = 0; i < n; i++) {
+    cov += (sRets[i]-sAvg)*(iRets[i]-iAvg);
+    iVar += Math.pow(iRets[i]-iAvg,2);
+  }
+  result.beta = iVar > 0 ? (cov/iVar) : null;
+  return result;
+}
+
+function calcRSScore(rsData) {
+  if (!rsData) return null;
+  let outCount = 0, total = 0;
+  ['m1','m3','m6'].forEach(p => { if(rsData[p]) { total++; if(rsData[p].outperform) outCount++; } });
+  if (total === 0) return null;
+  // Base score by outperformance count
+  let score = [20, 45, 65, 85][outCount];
+  // Boost/penalize by magnitude of diff on 3M (most relevant)
+  if (rsData.m3) {
+    const diff = rsData.m3.diff;
+    if (diff > 10) score = Math.min(100, score + 10);
+    else if (diff > 5) score = Math.min(100, score + 5);
+    else if (diff < -10) score = Math.max(0, score - 10);
+    else if (diff < -5) score = Math.max(0, score - 5);
+  }
+  return Math.round(score);
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOCAL STORAGE — persist scanned data between sessions
+// ═══════════════════════════════════════════════════════════
+const LS_KEY = 'raptor_cache_v2';
+const LS_META = 'raptor_meta_v2';
+
+function saveToStorage() {
+  try {
+    const cache = {};
+    UNIVERSE.forEach(s => {
+      if (!s.scanned) return;
+      cache[s.ticker] = {
+        price: s.price, change: s.change,
+        techScore: s.techScore, fundScore: s.fundScore,
+        totalScore: s.totalScore, signal: s.signal,
+        rsData: s.rsData || null,
+        fundData: s.fundData ? {
+          pe: s.fundData.pe, pb: s.fundData.pb, eveb: s.fundData.eveb,
+          peg: s.fundData.peg, roe: s.fundData.roe, roic: s.fundData.roic,
+          margin: s.fundData.margin, de: s.fundData.de, cr: s.fundData.cr,
+          epsGrow: s.fundData.epsGrow, revGrow: s.fundData.revGrow,
+          targetPrice: s.fundData.targetPrice, recommendation: s.fundData.recommendation,
+          analystCount: s.fundData.analystCount, currentPrice: s.fundData.currentPrice,
+          targetLow: s.fundData.targetLow, targetHigh: s.fundData.targetHigh,
+          ic: s.fundData.ic
+        } : null
+      };
+    });
+    localStorage.setItem(LS_KEY, JSON.stringify(cache));
+    localStorage.setItem(LS_META, JSON.stringify({ savedAt: new Date().toISOString(), count: Object.keys(cache).length }));
+    console.log('[Storage] Saved', Object.keys(cache).length, 'stocks');
+  } catch(e) { console.warn('[Storage] Save failed:', e.message); }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    const meta = localStorage.getItem(LS_META);
+    if (!raw) return 0;
+    const cache = JSON.parse(raw);
+    const metaObj = meta ? JSON.parse(meta) : null;
+    let count = 0;
+    UNIVERSE.forEach(s => {
+      const c = cache[s.ticker];
+      if (!c) return;
+      s.price = c.price; s.change = c.change;
+      s.techScore = c.techScore; s.fundScore = c.fundScore;
+      s.totalScore = c.totalScore; s.signal = c.signal;
+      s.rsData = c.rsData || null;
+      s.fundData = c.fundData || null;
+      s.scanned = true;
+      count++;
+    });
+    if (metaObj) {
+      const savedAt = new Date(metaObj.savedAt);
+      const el = document.getElementById('last-update');
+      if(el) el.textContent = 'Cache: ' + savedAt.toLocaleDateString('it-IT') + ' ' + savedAt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) + ' (' + count + ' titoli)';
+    }
+    console.log('[Storage] Loaded', count, 'stocks from cache');
+    return count;
+  } catch(e) { console.warn('[Storage] Load failed:', e.message); return 0; }
+}
+
+function clearStorage() {
+  localStorage.removeItem(LS_KEY);
+  localStorage.removeItem(LS_META);
+  UNIVERSE.forEach(s => { s.scanned=false; s.price=null; s.change=null; s.techScore=null; s.fundScore=null; s.totalScore=null; s.signal=null; s.rsData=null; s.fundData=null; });
+  renderTable(); updateTopStats();
+  document.getElementById('last-update').textContent = 'Cache svuotata';
+  console.log('[Storage] Cleared');
+}
 
 // ═══════════════════════════════════════════════════════════
 // INFO / REFRESH / AUTO-UPDATE
@@ -2445,9 +2701,10 @@ updateTopStats();
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">RSI (14 periodi)</td><td style="text-align:right;font-weight:600;">20%</td></tr>
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">MACD (12,26,9)</td><td style="text-align:right;font-weight:600;">20%</td></tr>
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;color:var(--text2);">SAR + SuperTrend</td><td style="text-align:right;font-weight:600;">15%</td></tr>
-          <tr><td style="padding:4px 0;color:var(--text2);">KAMA + OBV</td><td style="text-align:right;font-weight:600;">20%</td></tr>
+          <tr><td style="padding:4px 0;color:var(--text2);">KAMA + OBV</td><td style="text-align:right;font-weight:600;">17%</td></tr>
+          <tr><td style="padding:4px 0;color:var(--text2);">RS vs Indice (1M/3M/6M)</td><td style="text-align:right;font-weight:600;">15%</td></tr>
         </table>
-        <div style="font-size:10px;color:var(--text3);margin-top:8px;">Calcolo su 250 giorni storici (1 anno). Tutti i pesi sono modificabili nella sidebar.</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px;">Calcolo su 250 giorni storici (1 anno). Indici di riferimento: ^STOXX (600) e ^STOXX50E. Tutti i pesi sono modificabili nella sidebar.</div>
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;">
         <div style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--purple);margin-bottom:10px;font-size:13px;">📊 SCORE FONDAMENTALE (0-100)</div>
