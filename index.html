@@ -590,11 +590,12 @@ async function startScan() {
   document.getElementById('scan-progress').style.display='block';
   scanQueue=[...UNIVERSE.filter(s=>!s.scanned)];
   const total=scanQueue.length; let done=0;
-  async function next() {
+
+  // FASE 1 — prezzi + tecnico (3 alla volta)
+  async function nextPrice() {
     if(!state.scanning||scanQueue.length===0){
-      state.scanning=false; updateScanBtn();
-      document.getElementById('scan-progress').style.display='none';
-      updateLastUpdate(); saveToStorage();
+      // FASE 2 — fondamentali in background (1 alla volta, più lento)
+      startFundScan();
       return;
     }
     const batch=scanQueue.splice(0,3);
@@ -609,20 +610,55 @@ async function startScan() {
     }));
     const pct=Math.round(done/total*100);
     document.getElementById('progress-fill').style.width=pct+'%';
-    document.getElementById('scan-status').textContent=`Scansione: ${done}/${total} (${pct}%)`;
+    document.getElementById('scan-status').textContent=`Prezzi: ${done}/${total} (${pct}%)`;
     document.getElementById('stat-scanned').textContent=done;
     UNIVERSE.forEach(s=>{
-      const ts=calcTechScore(s.techData,state.weights),fs=calcFundScore(s.fundData,state.weights);
-      s.techScore=ts?.score??null; s.fundScore=fs?.score??null;
+      const ts=calcTechScore(s.techData,state.weights);
+      s.techScore=ts?.score??null;
       s.totalScore=calcTotalScore(s.techScore,s.fundScore,state.weights.techPct);
       const oldSig=s.signal; s.signal=scoreToSignal(s.totalScore);
       if(oldSig&&oldSig!==s.signal&&oldSig!=='N/A')notifySignalChange(s,oldSig,s.signal);
     });
     updateTopStats(); renderTable();
     if(done%30===0)saveToStorage();
-    setTimeout(next,300);
+    setTimeout(nextPrice,300);
   }
-  next();
+
+  // FASE 2 — fondamentali in background (1 alla volta, ~1.5s tra una e l'altra)
+  async function startFundScan() {
+    const toFund=[...UNIVERSE.filter(s=>s.scanned&&!s.fundData)];
+    let fdDone=0;
+    document.getElementById('scan-status').textContent=`Fondamentali: 0/${toFund.length}`;
+    async function nextFund() {
+      if(!state.scanning||toFund.length===0){
+        state.scanning=false; updateScanBtn();
+        document.getElementById('scan-progress').style.display='none';
+        updateLastUpdate(); saveToStorage();
+        return;
+      }
+      const s=toFund.shift();
+      try{
+        const fd=await fetchFundamentals(s.ticker);
+        if(fd){
+          s.fundData=fd;
+          const fs=calcFundScore(fd,state.weights);
+          s.fundScore=fs?.score??null;
+          s.totalScore=calcTotalScore(s.techScore,s.fundScore,state.weights.techPct);
+          s.signal=scoreToSignal(s.totalScore);
+        }
+      }catch(e){}
+      fdDone++;
+      const pct=Math.round(fdDone/Math.max(toFund.length+fdDone,1)*100);
+      document.getElementById('progress-fill').style.width=pct+'%';
+      document.getElementById('scan-status').textContent=`Fondamentali: ${fdDone}/${fdDone+toFund.length}`;
+      updateTopStats(); renderTable();
+      if(fdDone%20===0)saveToStorage();
+      setTimeout(nextFund, 1200); // 1.2s tra una chiamata e l'altra — evita rate limit
+    }
+    nextFund();
+  }
+
+  nextPrice();
 }
 
 function updateScanBtn(){const b=document.getElementById('scan-btn');if(state.scanning){b.textContent='⏹ STOP';b.classList.add('scanning');}else{b.textContent='▶ SCANSIONA';b.classList.remove('scanning');}}
