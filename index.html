@@ -1824,37 +1824,108 @@ async function fetchHistory(ticker, range='1y', interval='1d') {
 }
 
 async function fetchFundamentals(ticker) {
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=financialData,defaultKeyStatistics,summaryDetail,incomeStatementHistory`;
-  const data = await fetchWithProxy(url);
-  if (!data?.quoteSummary?.result?.[0]) return null;
-  const r = data.quoteSummary.result[0];
-  const fd = r.financialData, ks = r.defaultKeyStatistics, sd = r.summaryDetail;
-  const inc = r.incomeStatementHistory?.incomeStatementHistory;
+  // Helper to safely get .raw from Yahoo Finance field
+  const raw = (obj, ...keys) => {
+    let v = obj;
+    for(const k of keys) { if(v==null) return null; v = v[k]; }
+    return v?.raw ?? v ?? null;
+  };
+
+  // Try v11 quoteSummary (most complete)
+  let fd = null, ks = null, sd = null, inc = null;
+  try {
+    const url1 = `https://query2.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=financialData%2CdefaultKeyStatistics%2CsummaryDetail%2CincomeStatementHistory&corsDomain=finance.yahoo.com&formatted=false`;
+    const d1 = await fetchWithProxy(url1);
+    if (d1?.quoteSummary?.result?.[0]) {
+      const r = d1.quoteSummary.result[0];
+      fd = r.financialData;
+      ks = r.defaultKeyStatistics;
+      sd = r.summaryDetail;
+      inc = r.incomeStatementHistory?.incomeStatementHistory;
+    }
+  } catch(e) { console.warn('[Fund v11] failed:', e.message); }
+
+  // Fallback: v6/finance/quote (less complete but more reliable via proxy)
+  if (!fd && !ks) {
+    try {
+      const url2 = `https://query1.finance.yahoo.com/v6/finance/quote?symbols=${ticker}&fields=trailingPE,priceToBook,enterpriseToEbitda,pegRatio,returnOnEquity,profitMargins,debtToEquity,currentRatio,targetMeanPrice,recommendationKey,numberOfAnalystOpinions,currentPrice,targetLowPrice,targetHighPrice,epsTrailingTwelveMonths,epsForward,revenueGrowth,earningsGrowth`;
+      const d2 = await fetchWithProxy(url2);
+      const q = d2?.quoteResponse?.result?.[0];
+      if (q) {
+        return {
+          pe: q.trailingPE ?? null,
+          pb: q.priceToBook ?? null,
+          eveb: q.enterpriseToEbitda ?? null,
+          peg: q.pegRatio ?? null,
+          roe: q.returnOnEquity != null ? q.returnOnEquity * 100 : null,
+          roic: null,
+          margin: q.profitMargins != null ? q.profitMargins * 100 : null,
+          de: q.debtToEquity != null ? q.debtToEquity / 100 : null,
+          cr: q.currentRatio ?? null,
+          ic: null,
+          epsGrow: q.earningsGrowth != null ? q.earningsGrowth * 100 : null,
+          revGrow: q.revenueGrowth != null ? q.revenueGrowth * 100 : null,
+          targetPrice: q.targetMeanPrice ?? null,
+          recommendation: q.recommendationKey ?? null,
+          analystCount: q.numberOfAnalystOpinions ?? null,
+          currentPrice: q.regularMarketPrice ?? null,
+          targetLow: q.targetLowPrice ?? null,
+          targetHigh: q.targetHighPrice ?? null,
+        };
+      }
+    } catch(e) { console.warn('[Fund v6] failed:', e.message); }
+  }
+
+  // Fallback 2: v10 classic
+  if (!fd && !ks) {
+    try {
+      const url3 = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=financialData,defaultKeyStatistics,summaryDetail,incomeStatementHistory`;
+      const d3 = await fetchWithProxy(url3);
+      if (d3?.quoteSummary?.result?.[0]) {
+        const r = d3.quoteSummary.result[0];
+        fd = r.financialData;
+        ks = r.defaultKeyStatistics;
+        sd = r.summaryDetail;
+        inc = r.incomeStatementHistory?.incomeStatementHistory;
+      }
+    } catch(e) { console.warn('[Fund v10] failed:', e.message); }
+  }
+
+  if (!fd && !ks && !sd) return null;
+
   let epsGrow = null, revGrow = null;
   if (inc?.length >= 2) {
-    const e0 = inc[0]?.dilutedEPS?.raw, e1 = inc[1]?.dilutedEPS?.raw;
-    const rv0 = inc[0]?.totalRevenue?.raw, rv1 = inc[1]?.totalRevenue?.raw;
-    if(e0&&e1&&e1!==0) epsGrow = (e0-e1)/Math.abs(e1)*100;
-    if(rv0&&rv1&&rv1!==0) revGrow = (rv0-rv1)/Math.abs(rv1)*100;
+    const e0 = raw(inc[0],'dilutedEPS'), e1 = raw(inc[1],'dilutedEPS');
+    const rv0 = raw(inc[0],'totalRevenue'), rv1 = raw(inc[1],'totalRevenue');
+    if(e0!=null && e1!=null && e1!==0) epsGrow = (e0-e1)/Math.abs(e1)*100;
+    if(rv0!=null && rv1!=null && rv1!==0) revGrow = (rv0-rv1)/Math.abs(rv1)*100;
   }
+  // Also try financialData for growth
+  if(epsGrow==null && fd) epsGrow = raw(fd,'earningsGrowth') != null ? raw(fd,'earningsGrowth')*100 : null;
+  if(revGrow==null && fd) revGrow = raw(fd,'revenueGrowth') != null ? raw(fd,'revenueGrowth')*100 : null;
+
+  const peRaw = raw(sd,'trailingPE') ?? raw(ks,'trailingPE');
+  const pe = peRaw ?? (raw(ks,'trailingEps') && raw(fd,'currentPrice')
+    ? raw(fd,'currentPrice') / raw(ks,'trailingEps') : null);
+
   return {
-    pe: sd?.trailingPE?.raw ?? ks?.trailingEps?.raw ? (fd?.currentPrice?.raw ?? 0) / (ks?.trailingEps?.raw ?? 1) : null,
-    pb: ks?.priceToBook?.raw ?? null,
-    eveb: ks?.enterpriseToEbitda?.raw ?? null,
-    peg: ks?.pegRatio?.raw ?? null,
-    roe: fd?.returnOnEquity?.raw ? fd.returnOnEquity.raw*100 : null,
-    roic: ks?.returnOnCapital?.raw ? ks.returnOnCapital.raw*100 : null,
-    margin: fd?.profitMargins?.raw ? fd.profitMargins.raw*100 : null,
-    de: ks?.debtToEquity?.raw ? ks.debtToEquity.raw/100 : null,
-    cr: fd?.currentRatio?.raw ?? null,
-    ic: null,
+    pe,
+    pb:   raw(ks,'priceToBook'),
+    eveb: raw(ks,'enterpriseToEbitda'),
+    peg:  raw(ks,'pegRatio'),
+    roe:  raw(fd,'returnOnEquity') != null ? raw(fd,'returnOnEquity')*100 : null,
+    roic: raw(ks,'returnOnCapital') != null ? raw(ks,'returnOnCapital')*100 : null,
+    margin: raw(fd,'profitMargins') != null ? raw(fd,'profitMargins')*100 : null,
+    de:   raw(ks,'debtToEquity') != null ? raw(ks,'debtToEquity')/100 : null,
+    cr:   raw(fd,'currentRatio'),
+    ic:   null,
     epsGrow, revGrow,
-    targetPrice: fd?.targetMeanPrice?.raw ?? null,
+    targetPrice:  raw(fd,'targetMeanPrice'),
     recommendation: fd?.recommendationKey ?? null,
-    analystCount: fd?.numberOfAnalystOpinions?.raw ?? null,
-    currentPrice: fd?.currentPrice?.raw ?? null,
-    targetLow: fd?.targetLowPrice?.raw ?? null,
-    targetHigh: fd?.targetHighPrice?.raw ?? null,
+    analystCount: raw(fd,'numberOfAnalystOpinions'),
+    currentPrice: raw(fd,'currentPrice'),
+    targetLow:  raw(fd,'targetLowPrice'),
+    targetHigh: raw(fd,'targetHighPrice'),
   };
 }
 
