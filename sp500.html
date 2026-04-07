@@ -1703,108 +1703,140 @@ async function fetchHistory(ticker, range='1y', interval='1d') {
 }
 
 async function fetchFundamentals(ticker) {
-  // Helper to safely get .raw from Yahoo Finance field
-  const raw = (obj, ...keys) => {
-    let v = obj;
-    for(const k of keys) { if(v==null) return null; v = v[k]; }
-    return v?.raw ?? v ?? null;
-  };
+  // KEY INSIGHT: v8/finance/chart already works via proxy (it's the price endpoint).
+  // Requesting modules=summaryDetail,defaultKeyStatistics,financialData on the SAME
+  // endpoint gives us fundamentals without triggering different CORS blocks.
 
-  // Try v11 quoteSummary (most complete)
-  let fd = null, ks = null, sd = null, inc = null;
-  try {
-    const url1 = `https://query2.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=financialData%2CdefaultKeyStatistics%2CsummaryDetail%2CincomeStatementHistory&corsDomain=finance.yahoo.com&formatted=false`;
-    const d1 = await fetchWithProxy(url1);
-    if (d1?.quoteSummary?.result?.[0]) {
-      const r = d1.quoteSummary.result[0];
-      fd = r.financialData;
-      ks = r.defaultKeyStatistics;
-      sd = r.summaryDetail;
-      inc = r.incomeStatementHistory?.incomeStatementHistory;
+  const proxies = [
+    u => 'https://corsproxy.io/?' + encodeURIComponent(u),
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  ];
+
+  async function tryFetch(url) {
+    for(const p of proxies) {
+      try {
+        const r = await fetch(p(url), {signal: AbortSignal.timeout(9000)});
+        if(!r.ok) continue;
+        const text = await r.text();
+        if(!text || text.startsWith('<')) continue; // HTML error page
+        const json = JSON.parse(text);
+        // Check for Yahoo error
+        if(json?.chart?.error || json?.quoteSummary?.error) continue;
+        return json;
+      } catch(e) {}
     }
-  } catch(e) { console.warn('[Fund v11] failed:', e.message); }
-
-  // Fallback: v6/finance/quote (less complete but more reliable via proxy)
-  if (!fd && !ks) {
-    try {
-      const url2 = `https://query1.finance.yahoo.com/v6/finance/quote?symbols=${ticker}&fields=trailingPE,priceToBook,enterpriseToEbitda,pegRatio,returnOnEquity,profitMargins,debtToEquity,currentRatio,targetMeanPrice,recommendationKey,numberOfAnalystOpinions,currentPrice,targetLowPrice,targetHighPrice,epsTrailingTwelveMonths,epsForward,revenueGrowth,earningsGrowth`;
-      const d2 = await fetchWithProxy(url2);
-      const q = d2?.quoteResponse?.result?.[0];
-      if (q) {
-        return {
-          pe: q.trailingPE ?? null,
-          pb: q.priceToBook ?? null,
-          eveb: q.enterpriseToEbitda ?? null,
-          peg: q.pegRatio ?? null,
-          roe: q.returnOnEquity != null ? q.returnOnEquity * 100 : null,
-          roic: null,
-          margin: q.profitMargins != null ? q.profitMargins * 100 : null,
-          de: q.debtToEquity != null ? q.debtToEquity / 100 : null,
-          cr: q.currentRatio ?? null,
-          ic: null,
-          epsGrow: q.earningsGrowth != null ? q.earningsGrowth * 100 : null,
-          revGrow: q.revenueGrowth != null ? q.revenueGrowth * 100 : null,
-          targetPrice: q.targetMeanPrice ?? null,
-          recommendation: q.recommendationKey ?? null,
-          analystCount: q.numberOfAnalystOpinions ?? null,
-          currentPrice: q.regularMarketPrice ?? null,
-          targetLow: q.targetLowPrice ?? null,
-          targetHigh: q.targetHighPrice ?? null,
-        };
-      }
-    } catch(e) { console.warn('[Fund v6] failed:', e.message); }
+    return null;
   }
 
-  // Fallback 2: v10 classic
-  if (!fd && !ks) {
-    try {
-      const url3 = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=financialData,defaultKeyStatistics,summaryDetail,incomeStatementHistory`;
-      const d3 = await fetchWithProxy(url3);
-      if (d3?.quoteSummary?.result?.[0]) {
-        const r = d3.quoteSummary.result[0];
-        fd = r.financialData;
-        ks = r.defaultKeyStatistics;
-        sd = r.summaryDetail;
-        inc = r.incomeStatementHistory?.incomeStatementHistory;
-      }
-    } catch(e) { console.warn('[Fund v10] failed:', e.message); }
-  }
+  // ── Strategy 1: v8 chart + modules (SAME endpoint as price data — most reliable) ──
+  try {
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker
+      + '?interval=1d&range=1d'
+      + '&modules=summaryDetail%2CdefaultKeyStatistics%2CfinancialData'
+      + '&includePrePost=false';
+    const d = await tryFetch(url);
+    const meta = d?.chart?.result?.[0]?.meta;
+    const mods = d?.chart?.result?.[0];
+    // modules come back as top-level keys alongside indicators
+    const fd  = mods?.financialData       || null;
+    const ks  = mods?.defaultKeyStatistics || null;
+    const sd  = mods?.summaryDetail        || null;
 
-  if (!fd && !ks && !sd) return null;
+    if(fd || ks || sd) {
+      console.log('[Fund v8+modules] OK', ticker);
+      return buildFundObj(fd, ks, sd, null, meta);
+    }
+  } catch(e) { console.warn('[Fund v8]', e.message); }
 
+  // ── Strategy 2: v7 quote (lightweight, different path) ──
+  try {
+    const url = 'https://query2.finance.yahoo.com/v7/finance/quote?symbols=' + ticker
+      + '&fields=trailingPE,priceToBook,enterpriseToEbitda,pegRatio,returnOnEquity'
+      + ',profitMargins,debtToEquity,currentRatio,revenueGrowth,earningsGrowth'
+      + ',targetMeanPrice,targetLowPrice,targetHighPrice,recommendationKey'
+      + ',numberOfAnalystOpinions,regularMarketPrice';
+    const d = await tryFetch(url);
+    const q = d?.quoteResponse?.result?.[0];
+    if(q && (q.trailingPE || q.profitMargins || q.returnOnEquity)) {
+      console.log('[Fund v7] OK', ticker);
+      return {
+        pe:     q.trailingPE   ?? null,
+        pb:     q.priceToBook  ?? null,
+        eveb:   q.enterpriseToEbitda ?? null,
+        peg:    q.pegRatio     ?? null,
+        roe:    q.returnOnEquity  != null ? q.returnOnEquity  * 100 : null,
+        roic:   null,
+        margin: q.profitMargins   != null ? q.profitMargins   * 100 : null,
+        de:     q.debtToEquity    != null ? q.debtToEquity    / 100 : null,
+        cr:     q.currentRatio    ?? null,
+        ic:     null,
+        epsGrow: q.earningsGrowth != null ? q.earningsGrowth * 100 : null,
+        revGrow: q.revenueGrowth  != null ? q.revenueGrowth  * 100 : null,
+        targetPrice:   q.targetMeanPrice   ?? null,
+        recommendation: q.recommendationKey ?? null,
+        analystCount:  q.numberOfAnalystOpinions ?? null,
+        currentPrice:  q.regularMarketPrice ?? null,
+        targetLow:     q.targetLowPrice  ?? null,
+        targetHigh:    q.targetHighPrice ?? null,
+      };
+    }
+  } catch(e) { console.warn('[Fund v7]', e.message); }
+
+  // ── Strategy 3: v11 quoteSummary ──
+  try {
+    const url = 'https://query2.finance.yahoo.com/v11/finance/quoteSummary/' + ticker
+      + '?modules=financialData,defaultKeyStatistics,summaryDetail,incomeStatementHistory'
+      + '&formatted=false&corsDomain=finance.yahoo.com';
+    const d = await tryFetch(url);
+    if(d?.quoteSummary?.result?.[0]) {
+      const r = d.quoteSummary.result[0];
+      console.log('[Fund v11] OK', ticker);
+      return buildFundObj(r.financialData, r.defaultKeyStatistics, r.summaryDetail,
+        r.incomeStatementHistory?.incomeStatementHistory, null);
+    }
+  } catch(e) { console.warn('[Fund v11]', e.message); }
+
+  console.warn('[Fund] All strategies failed for', ticker);
+  return null;
+}
+
+function buildFundObj(fd, ks, sd, inc, meta) {
+  const g = (obj, key) => {
+    if(!obj) return null;
+    const v = obj[key];
+    if(v==null) return null;
+    return typeof v === 'object' && 'raw' in v ? v.raw : v;
+  };
   let epsGrow = null, revGrow = null;
-  if (inc?.length >= 2) {
-    const e0 = raw(inc[0],'dilutedEPS'), e1 = raw(inc[1],'dilutedEPS');
-    const rv0 = raw(inc[0],'totalRevenue'), rv1 = raw(inc[1],'totalRevenue');
-    if(e0!=null && e1!=null && e1!==0) epsGrow = (e0-e1)/Math.abs(e1)*100;
-    if(rv0!=null && rv1!=null && rv1!==0) revGrow = (rv0-rv1)/Math.abs(rv1)*100;
+  if(inc?.length >= 2) {
+    const e0=g(inc[0],'dilutedEPS'), e1=g(inc[1],'dilutedEPS');
+    const r0=g(inc[0],'totalRevenue'), r1=g(inc[1],'totalRevenue');
+    if(e0!=null&&e1!=null&&e1!==0) epsGrow=(e0-e1)/Math.abs(e1)*100;
+    if(r0!=null&&r1!=null&&r1!==0) revGrow=(r0-r1)/Math.abs(r1)*100;
   }
-  // Also try financialData for growth
-  if(epsGrow==null && fd) epsGrow = raw(fd,'earningsGrowth') != null ? raw(fd,'earningsGrowth')*100 : null;
-  if(revGrow==null && fd) revGrow = raw(fd,'revenueGrowth') != null ? raw(fd,'revenueGrowth')*100 : null;
-
-  const peRaw = raw(sd,'trailingPE') ?? raw(ks,'trailingPE');
-  const pe = peRaw ?? (raw(ks,'trailingEps') && raw(fd,'currentPrice')
-    ? raw(fd,'currentPrice') / raw(ks,'trailingEps') : null);
-
+  if(epsGrow==null) epsGrow = g(fd,'earningsGrowth')!=null ? g(fd,'earningsGrowth')*100 : null;
+  if(revGrow==null) revGrow = g(fd,'revenueGrowth') !=null ? g(fd,'revenueGrowth') *100 : null;
+  const pe = g(sd,'trailingPE') ?? g(ks,'trailingPE')
+    ?? (g(ks,'trailingEps')&&g(fd,'currentPrice') ? g(fd,'currentPrice')/g(ks,'trailingEps') : null);
   return {
     pe,
-    pb:   raw(ks,'priceToBook'),
-    eveb: raw(ks,'enterpriseToEbitda'),
-    peg:  raw(ks,'pegRatio'),
-    roe:  raw(fd,'returnOnEquity') != null ? raw(fd,'returnOnEquity')*100 : null,
-    roic: raw(ks,'returnOnCapital') != null ? raw(ks,'returnOnCapital')*100 : null,
-    margin: raw(fd,'profitMargins') != null ? raw(fd,'profitMargins')*100 : null,
-    de:   raw(ks,'debtToEquity') != null ? raw(ks,'debtToEquity')/100 : null,
-    cr:   raw(fd,'currentRatio'),
-    ic:   null,
+    pb:     g(ks,'priceToBook'),
+    eveb:   g(ks,'enterpriseToEbitda'),
+    peg:    g(ks,'pegRatio'),
+    roe:    g(fd,'returnOnEquity')  != null ? g(fd,'returnOnEquity')  * 100 : null,
+    roic:   g(ks,'returnOnCapital') != null ? g(ks,'returnOnCapital') * 100 : null,
+    margin: g(fd,'profitMargins')   != null ? g(fd,'profitMargins')   * 100 : null,
+    de:     g(ks,'debtToEquity')    != null ? g(ks,'debtToEquity')    / 100 : null,
+    cr:     g(fd,'currentRatio'),
+    ic:     null,
     epsGrow, revGrow,
-    targetPrice:  raw(fd,'targetMeanPrice'),
+    targetPrice:   g(fd,'targetMeanPrice'),
     recommendation: fd?.recommendationKey ?? null,
-    analystCount: raw(fd,'numberOfAnalystOpinions'),
-    currentPrice: raw(fd,'currentPrice'),
-    targetLow:  raw(fd,'targetLowPrice'),
-    targetHigh: raw(fd,'targetHighPrice'),
+    analystCount:  g(fd,'numberOfAnalystOpinions'),
+    currentPrice:  g(fd,'currentPrice') ?? meta?.regularMarketPrice ?? null,
+    targetLow:     g(fd,'targetLowPrice'),
+    targetHigh:    g(fd,'targetHighPrice'),
   };
 }
 
