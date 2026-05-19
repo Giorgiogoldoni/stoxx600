@@ -1,1 +1,33 @@
+name: Update Breadth Data
 
+on:
+  schedule:
+    - cron: '0 22 * * 1-5'  # 22:00 UTC = 23:00 CET lunedì-venerdì
+  workflow_dispatch:          # run manuale dal tab Actions
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas
+
+      - name: Run breadth script
+        run: python scripts/update_breadth.py
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/breadth.json
+          git diff --staged --quiet || git commit -m "chore: update breadth data $(date -u +%Y-%m-%d)"
+          git push
